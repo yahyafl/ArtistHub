@@ -163,7 +163,7 @@ export default function LoginPage() {
           color: "var(--text-muted)",
           marginTop: "24px",
         }}>
-          Default: artist@artisthub.com / admin123
+         
         </p>
       </div>
     </main>

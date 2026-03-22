@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum Role {
+  ADMIN
+  EDITOR
+  ARTIST
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String?
+  email     String    @unique
+  password  String
+  role      Role      @default(ARTIST)
+  projects  Project[]
+  createdAt DateTime  @default(now())
+}
+
+model Project {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  genre       String
+  mood        String
+  imageUrl    String?
+  trackUrl    String?      // ← ADD THIS (SoundCloud, YouTube, Spotify link)
+  createdAt   DateTime     @default(now())
+  author      User         @relation(fields: [authorId], references: [id])
+  authorId    String
+  submissions Submission[]
+}
+model Blog {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+}
+
+model News {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Submission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String
+  createdAt DateTime @default(now())
+}
+
+model SiteContent {
+  id      String @id @default(cuid())
+  page    String @unique
+  content Json
+}

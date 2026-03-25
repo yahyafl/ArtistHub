@@ -11,11 +11,16 @@ interface NewsItem {
   createdAt: Date;
 }
 
-interface Props { news: NewsItem[]; }
+interface Props {
+  news: NewsItem[];
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
 
 const emptyForm = { title: "", content: "", imageUrl: "" };
 
-export default function NewsManager({ news }: Props) {
+export default function NewsManager({ news, canCreate, canEdit, canDelete }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -28,6 +33,14 @@ export default function NewsManager({ news }: Props) {
   }
 
   async function handleSubmit() {
+    if (editId && !canEdit) {
+      setError("You do not have permission to edit news posts.");
+      return;
+    }
+    if (!editId && !canCreate) {
+      setError("You do not have permission to create news posts.");
+      return;
+    }
     if (!form.title || !form.content) {
       setError("Title and content are required.");
       return;
@@ -55,6 +68,10 @@ export default function NewsManager({ news }: Props) {
   }
 
   async function handleDelete(id: string) {
+    if (!canDelete) {
+      setError("You do not have permission to delete news posts.");
+      return;
+    }
     if (!confirm("Delete this news item?")) return;
     await fetch(`/api/news/${id}`, { method: "DELETE" });
     router.refresh();
@@ -85,14 +102,16 @@ export default function NewsManager({ news }: Props) {
 
   return (
     <div>
-      <div style={{ marginBottom: "24px" }}>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); }}
-          className="btn-primary"
-        >
-          {showForm ? "Cancel" : "+ New News Post"}
-        </button>
-      </div>
+      {canCreate && (
+        <div style={{ marginBottom: "24px" }}>
+          <button
+            onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); }}
+            className="btn-primary"
+          >
+            {showForm ? "Cancel" : "+ New News Post"}
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <div style={{
@@ -173,16 +192,20 @@ export default function NewsManager({ news }: Props) {
                 </p>
               </div>
               <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-                <button onClick={() => handleEdit(item)}
-                  className="btn-outline"
-                  style={{ padding: "6px 16px", fontSize: "13px" }}>
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(item.id)} style={{
-                  padding: "6px 16px", fontSize: "13px",
-                  border: "1px solid #FECACA", background: "#FEE2E2",
-                  color: "#DC2626", borderRadius: "2px", cursor: "pointer",
-                }}>Delete</button>
+                {canEdit && (
+                  <button onClick={() => handleEdit(item)}
+                    className="btn-outline"
+                    style={{ padding: "6px 16px", fontSize: "13px" }}>
+                    Edit
+                  </button>
+                )}
+                {canDelete && (
+                  <button onClick={() => handleDelete(item.id)} style={{
+                    padding: "6px 16px", fontSize: "13px",
+                    border: "1px solid #FECACA", background: "#FEE2E2",
+                    color: "#DC2626", borderRadius: "2px", cursor: "pointer",
+                  }}>Delete</button>
+                )}
               </div>
             </div>
           ))}

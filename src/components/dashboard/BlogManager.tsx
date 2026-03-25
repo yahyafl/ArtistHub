@@ -11,11 +11,16 @@ interface Blog {
   createdAt: Date;
 }
 
-interface Props { blogs: Blog[]; }
+interface Props {
+  blogs: Blog[];
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
 
 const emptyForm = { title: "", content: "", imageUrl: "" };
 
-export default function BlogManager({ blogs }: Props) {
+export default function BlogManager({ blogs, canCreate, canEdit, canDelete }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -28,6 +33,14 @@ export default function BlogManager({ blogs }: Props) {
   }
 
   async function handleSubmit() {
+    if (editId && !canEdit) {
+      setError("You do not have permission to edit blog posts.");
+      return;
+    }
+    if (!editId && !canCreate) {
+      setError("You do not have permission to create blog posts.");
+      return;
+    }
     if (!form.title || !form.content) {
       setError("Title and content are required.");
       return;
@@ -55,6 +68,10 @@ export default function BlogManager({ blogs }: Props) {
   }
 
   async function handleDelete(id: string) {
+    if (!canDelete) {
+      setError("You do not have permission to delete blog posts.");
+      return;
+    }
     if (!confirm("Delete this blog post?")) return;
     await fetch(`/api/blog/${id}`, { method: "DELETE" });
     router.refresh();
@@ -85,14 +102,16 @@ export default function BlogManager({ blogs }: Props) {
 
   return (
     <div>
-      <div style={{ marginBottom: "24px" }}>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); }}
-          className="btn-primary"
-        >
-          {showForm ? "Cancel" : "+ New Blog Post"}
-        </button>
-      </div>
+      {canCreate && (
+        <div style={{ marginBottom: "24px" }}>
+          <button
+            onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); }}
+            className="btn-primary"
+          >
+            {showForm ? "Cancel" : "+ New Blog Post"}
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <div style={{
@@ -174,16 +193,20 @@ export default function BlogManager({ blogs }: Props) {
                 </p>
               </div>
               <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-                <button onClick={() => handleEdit(blog)}
-                  className="btn-outline"
-                  style={{ padding: "6px 16px", fontSize: "13px" }}>
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(blog.id)} style={{
-                  padding: "6px 16px", fontSize: "13px",
-                  border: "1px solid #FECACA", background: "#FEE2E2",
-                  color: "#DC2626", borderRadius: "2px", cursor: "pointer",
-                }}>Delete</button>
+                {canEdit && (
+                  <button onClick={() => handleEdit(blog)}
+                    className="btn-outline"
+                    style={{ padding: "6px 16px", fontSize: "13px" }}>
+                    Edit
+                  </button>
+                )}
+                {canDelete && (
+                  <button onClick={() => handleDelete(blog.id)} style={{
+                    padding: "6px 16px", fontSize: "13px",
+                    border: "1px solid #FECACA", background: "#FEE2E2",
+                    color: "#DC2626", borderRadius: "2px", cursor: "pointer",
+                  }}>Delete</button>
+                )}
               </div>
             </div>
           ))}

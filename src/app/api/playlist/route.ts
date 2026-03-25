@@ -17,7 +17,11 @@ export async function POST(req: NextRequest) {
     const { genre, mood, explanation } = await extractPlaylistQuery(query);
 
     // Step 2: Use genre + mood to fetch songs from iTunes
-    const tracks = await fetchTopByGenre(genre, mood, 8);
+    const isArabic = genre.trim().toLowerCase() === "arabic";
+    const tracks = await fetchTopByGenre(genre, mood, 8, {
+      strictArabic: isArabic,
+      dedupeByCollection: isArabic,
+    });
 
     // Step 3: Return everything
     return NextResponse.json({

@@ -1,10 +1,13 @@
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import { PERMISSIONS, hasAnyPermission, hasPermission } from "@/lib/permissions";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const role = (session?.user as any)?.role;
+  const permissions = ((session?.user as any)?.permissions || []) as string[];
 
   const [projectCount, blogCount, newsCount, contactCount, submissionCount] =
     await Promise.all([
@@ -21,62 +24,86 @@ export default async function DashboardPage() {
   });
 
   const stats = [
-    { label: "Projects", value: projectCount, icon: "🎵", href: "/dashboard/projects", roles: ["ADMIN", "ARTIST"] },
-    { label: "Blog Posts", value: blogCount, icon: "✍️", href: "/dashboard/blog", roles: ["ADMIN", "EDITOR"] },
-    { label: "News", value: newsCount, icon: "📰", href: "/dashboard/news", roles: ["ADMIN", "EDITOR"] },
-    { label: "Messages", value: contactCount, icon: "✉️", href: "/dashboard/contacts", roles: ["ADMIN"] },
-    { label: "Submissions", value: submissionCount, icon: "📬", href: "/dashboard/submissions", roles: ["ADMIN", "ARTIST"] },
-  ].filter(s => s.roles.includes(role));
+    {
+      label: "Projects",
+      value: projectCount,
+      icon: "🎵",
+      href: "/dashboard/projects",
+      permissions: [
+        PERMISSIONS.PROJECTS_READ,
+        PERMISSIONS.PROJECTS_CREATE,
+        PERMISSIONS.PROJECTS_EDIT,
+        PERMISSIONS.PROJECTS_DELETE,
+      ],
+    },
+    {
+      label: "Blog Posts",
+      value: blogCount,
+      icon: "✍️",
+      href: "/dashboard/blog",
+      permissions: [
+        PERMISSIONS.BLOG_READ,
+        PERMISSIONS.BLOG_CREATE,
+        PERMISSIONS.BLOG_EDIT,
+        PERMISSIONS.BLOG_DELETE,
+      ],
+    },
+    {
+      label: "News",
+      value: newsCount,
+      icon: "📰",
+      href: "/dashboard/news",
+      permissions: [
+        PERMISSIONS.NEWS_READ,
+        PERMISSIONS.NEWS_CREATE,
+        PERMISSIONS.NEWS_EDIT,
+        PERMISSIONS.NEWS_DELETE,
+      ],
+    },
+    {
+      label: "Messages",
+      value: contactCount,
+      icon: "✉️",
+      href: "/dashboard/contacts",
+      permissions: [PERMISSIONS.CONTACTS_READ],
+    },
+    {
+      label: "Submissions",
+      value: submissionCount,
+      icon: "📬",
+      href: "/dashboard/submissions",
+      permissions: [PERMISSIONS.SUBMISSIONS_READ],
+    },
+  ].filter((s) => hasAnyPermission(permissions, s.permissions));
 
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: "40px" }}>
+      <div className="dashboard-header">
         <span className="section-label">Dashboard</span>
-        <h1 style={{ fontSize: "32px", marginBottom: "8px" }}>
+        <h1 style={{ fontSize: "32px" }}>
           Welcome back, {session?.user?.name?.split(" ")[0]} 👋
         </h1>
-        <p style={{ fontSize: "14px", color: "var(--text-muted)" }}>
+        <p className="dashboard-subtle">
           Here's what's happening on ArtistHub today.
         </p>
       </div>
 
       {/* Stats */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-        gap: "16px",
-        marginBottom: "48px",
-      }}>
+      <div className="stat-grid">
         {stats.map((stat) => (
           <Link key={stat.label} href={stat.href} style={{ textDecoration: "none" }}>
-            <div className="card" style={{
-              padding: "24px",
-              cursor: "pointer",
-              textAlign: "center",
-            }}>
-              <p style={{ fontSize: "32px", marginBottom: "8px" }}>{stat.icon}</p>
-              <p style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: "36px",
-                fontWeight: 700,
-                color: "var(--accent)",
-                lineHeight: 1,
-                marginBottom: "6px",
-              }}>{stat.value}</p>
-              <p style={{
-                fontSize: "12px",
-                color: "var(--text-muted)",
-                letterSpacing: "1px",
-                textTransform: "uppercase",
-              }}>{stat.label}</p>
+            <div className="card stat-card">
+              <p className="stat-card__icon">{stat.icon}</p>
+              <p className="stat-card__value">{stat.value}</p>
+              <p className="stat-card__label">{stat.label}</p>
             </div>
           </Link>
         ))}
       </div>
 
       {/* Recent messages */}
-      {role === "ADMIN" && recentContacts.length > 0 && (
+      {hasPermission(permissions, PERMISSIONS.CONTACTS_READ) && recentContacts.length > 0 && (
         <div>
           <div style={{
             display: "flex",
@@ -94,11 +121,8 @@ export default async function DashboardPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {recentContacts.map((msg) => (
-              <div key={msg.id} style={{
+              <div key={msg.id} className="dashboard-card" style={{
                 padding: "20px 24px",
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-                borderRadius: "4px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",

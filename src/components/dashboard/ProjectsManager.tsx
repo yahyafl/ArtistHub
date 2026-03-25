@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 interface Project {
   id: string;
   title: string;
+  description?: string;
   genre: string;
   mood: string;
   trackUrl?: string | null;
+  imageUrl?: string | null;
   createdAt: Date;
   author: { name?: string | null };
   _count: { submissions: number };
@@ -17,7 +19,9 @@ interface Project {
 interface Props {
   projects: Project[];
   userId: string;
-  userRole: string;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 const emptyForm = {
@@ -25,7 +29,9 @@ const emptyForm = {
   mood: "", imageUrl: "", trackUrl: "",
 };
 
-export default function ProjectsManager({ projects, userId, userRole }: Props) {
+export default function ProjectsManager({
+  projects, userId, canCreate, canEdit, canDelete
+}: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -33,7 +39,9 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
@@ -44,17 +52,14 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
     }
     setLoading(true);
     setError("");
-
     try {
       const url = editId ? `/api/projects/${editId}` : "/api/projects";
       const method = editId ? "PUT" : "POST";
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, authorId: userId }),
       });
-
       if (!res.ok) throw new Error("Failed");
       setShowForm(false);
       setForm(emptyForm);
@@ -101,24 +106,27 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
 
   return (
     <div>
-      {/* Add button */}
-      <div style={{ marginBottom: "24px" }}>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditId(null); setForm(emptyForm); }}
-          className="btn-primary"
-        >
-          {showForm ? "Cancel" : "+ New Project"}
-        </button>
-      </div>
+      {/* Add button — only if user has create permission */}
+      {canCreate && (
+        <div style={{ marginBottom: "24px" }}>
+          <button
+            onClick={() => {
+              setShowForm(!showForm);
+              setEditId(null);
+              setForm(emptyForm);
+            }}
+            className="btn-primary"
+          >
+            {showForm ? "Cancel" : "+ New Project"}
+          </button>
+        </div>
+      )}
 
       {/* Form */}
-      {showForm && (
+      {showForm && canCreate && (
         <div style={{
-          background: "var(--bg-card)",
-          border: "1px solid var(--border)",
-          borderRadius: "4px",
-          padding: "32px",
-          marginBottom: "32px",
+          background: "var(--bg-card)", border: "1px solid var(--border)",
+          borderRadius: "4px", padding: "32px", marginBottom: "32px",
         }}>
           <h3 style={{
             fontFamily: "'Playfair Display', serif",
@@ -134,28 +142,34 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
           }}>
             <div>
               <label style={labelStyle}>Title *</label>
-              <input name="title" value={form.title} onChange={handleChange}
-                placeholder="Track title" style={inputStyle} />
+              <input name="title" value={form.title}
+                onChange={handleChange} placeholder="Track title"
+                style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Genre *</label>
-              <input name="genre" value={form.genre} onChange={handleChange}
-                placeholder="Arabic, Jazz, Indie..." style={inputStyle} />
+              <input name="genre" value={form.genre}
+                onChange={handleChange} placeholder="Arabic, Jazz, Indie..."
+                style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Mood *</label>
-              <input name="mood" value={form.mood} onChange={handleChange}
-                placeholder="Happy, Sad, Chill..." style={inputStyle} />
+              <input name="mood" value={form.mood}
+                onChange={handleChange} placeholder="Happy, Sad, Chill..."
+                style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Track URL</label>
-              <input name="trackUrl" value={form.trackUrl} onChange={handleChange}
-                placeholder="SoundCloud / YouTube / Spotify link" style={inputStyle} />
+              <input name="trackUrl" value={form.trackUrl}
+                onChange={handleChange}
+                placeholder="SoundCloud / YouTube / Spotify link"
+                style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Image URL</label>
-              <input name="imageUrl" value={form.imageUrl} onChange={handleChange}
-                placeholder="https://..." style={inputStyle} />
+              <input name="imageUrl" value={form.imageUrl}
+                onChange={handleChange} placeholder="https://..."
+                style={inputStyle} />
             </div>
           </div>
 
@@ -175,11 +189,17 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
           )}
 
           <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
-            <button onClick={handleSubmit} disabled={loading} className="btn-primary"
+            <button onClick={handleSubmit} disabled={loading}
+              className="btn-primary"
               style={{ opacity: loading ? 0.7 : 1 }}>
               {loading ? "Saving..." : editId ? "Update" : "Create"}
             </button>
-            <button onClick={() => { setShowForm(false); setForm(emptyForm); setEditId(null); }}
+            <button
+              onClick={() => {
+                setShowForm(false);
+                setForm(emptyForm);
+                setEditId(null);
+              }}
               className="btn-outline">
               Cancel
             </button>
@@ -187,7 +207,7 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
         </div>
       )}
 
-      {/* Projects table */}
+      {/* Projects list */}
       {projects.length === 0 ? (
         <div style={{
           textAlign: "center", padding: "60px",
@@ -195,23 +215,22 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
           borderRadius: "4px", color: "var(--text-muted)",
         }}>
           <p style={{ fontSize: "32px", marginBottom: "12px" }}>🎵</p>
-          <p>No projects yet. Create your first one!</p>
+          <p>No projects yet.{canCreate ? " Create your first one!" : ""}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {projects.map((project) => (
             <div key={project.id} style={{
-              background: "var(--white)",
-              border: "1px solid var(--border)",
-              borderRadius: "4px",
-              padding: "20px 24px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "16px",
+              background: "var(--white)", border: "1px solid var(--border)",
+              borderRadius: "4px", padding: "20px 24px",
+              display: "flex", justifyContent: "space-between",
+              alignItems: "center", gap: "16px",
             }}>
               <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
+                <div style={{
+                  display: "flex", gap: "8px",
+                  marginBottom: "6px", flexWrap: "wrap",
+                }}>
                   <span style={{
                     fontSize: "11px", padding: "2px 8px",
                     background: "var(--accent)", color: "white",
@@ -234,20 +253,24 @@ export default function ProjectsManager({ projects, userId, userRole }: Props) {
                 </p>
               </div>
 
+              {/* Show edit/delete only if user has permission */}
               <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
-                <button onClick={() => handleEdit(project)}
-                  className="btn-outline"
-                  style={{ padding: "6px 16px", fontSize: "13px" }}>
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(project.id)}
-                  style={{
+                {canEdit && (
+                  <button onClick={() => handleEdit(project)}
+                    className="btn-outline"
+                    style={{ padding: "6px 16px", fontSize: "13px" }}>
+                    Edit
+                  </button>
+                )}
+                {canDelete && (
+                  <button onClick={() => handleDelete(project.id)} style={{
                     padding: "6px 16px", fontSize: "13px",
                     border: "1px solid #FECACA", background: "#FEE2E2",
                     color: "#DC2626", borderRadius: "2px", cursor: "pointer",
                   }}>
-                  Delete
-                </button>
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}

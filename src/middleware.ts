@@ -9,6 +9,14 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  if (isDashboard) {
+    const res = NextResponse.next();
+    res.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+    return res;
+  }
+
   return NextResponse.next();
 });
 

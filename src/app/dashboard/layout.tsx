@@ -1,6 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import DashboardSidebar from "@/components/dashboard/Sidebar";
+import BackRefresh from "@/components/dashboard/BackRefresh";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({
   children,
@@ -10,23 +13,22 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session) redirect("/login");
 
+  const permissions = (session.user as any)?.permissions || [];
+  const userRole = (session.user as any)?.role || "No Role";
+
   return (
-    <div style={{
-      display: "flex",
-      minHeight: "100vh",
-      background: "var(--bg)",
-    }}>
+    <div className="dashboard-shell">
+      <BackRefresh />
       <DashboardSidebar
-        userRole={(session.user as any).role}
+        permissions={permissions}
         userName={session.user?.name || "User"}
         userEmail={session.user?.email || ""}
+        userRole={userRole}
       />
-      <main style={{
-        flex: 1,
-        padding: "40px",
-        overflowY: "auto",
-      }}>
-        {children}
+      <main className="dashboard-main">
+        <div className="dashboard-content">
+          {children}
+        </div>
       </main>
     </div>
   );

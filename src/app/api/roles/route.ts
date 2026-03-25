@@ -7,24 +7,27 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     const permissions = ((session?.user as any)?.permissions || []) as string[];
-    if (!session || !hasPermission(permissions, PERMISSIONS.CONTENT_EDIT)) {
+    if (!session || !hasPermission(permissions, PERMISSIONS.USERS_MANAGE)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { page, content } = await req.json();
-    if (!page || !content) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-    }
+    const { name, description, permissionIds } = await req.json();
+    if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
 
-    const result = await prisma.siteContent.upsert({
-      where: { page },
-      update: { content },
-      create: { page, content },
+    const role = await prisma.role.create({
+      data: {
+        name,
+        description,
+        permissions: {
+          create: permissionIds.map((id: string) => ({
+            permission: { connect: { id } },
+          })),
+        },
+      },
     });
 
-    return NextResponse.json({ result });
+    return NextResponse.json({ role }, { status: 201 });
   } catch (error) {
-    console.error("Content API error:", error);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

@@ -25,65 +25,85 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      if (result.error.includes("PENDING")) {
+        setError("Your account is pending admin approval.");
+      } else if (result.error.includes("REJECTED")) {
+        setError("Your account has been rejected. Contact admin.");
+      } else {
+        setError("Invalid email or password.");
+      }
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
+    router.replace("/dashboard");
   }
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "var(--bg)",
-    }}>
-      <div style={{
-        width: "100%",
-        maxWidth: "420px",
-        padding: "48px 40px",
-        background: "var(--bg-card)",
-        border: "1px solid var(--border)",
-        borderRadius: "4px",
-        boxShadow: "0 20px 60px rgba(74,63,63,0.1)",
-      }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--bg)",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "420px",
+          padding: "48px 40px",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border)",
+          borderRadius: "4px",
+          boxShadow: "0 20px 60px rgba(74,63,63,0.1)",
+        }}
+      >
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <p style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "28px",
-            fontWeight: 700,
-            color: "var(--text)",
-          }}>
+          <p
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: "28px",
+              fontWeight: 700,
+              color: "var(--text)",
+            }}
+          >
             Artist<span style={{ color: "var(--accent)" }}>Hub</span>
           </p>
-          <p style={{
-            fontSize: "14px",
-            color: "var(--text-muted)",
-            marginTop: "6px",
-          }}>Sign in to your dashboard</p>
+          <p
+            style={{
+              fontSize: "14px",
+              color: "var(--text-muted)",
+              marginTop: "6px",
+            }}
+          >
+            Sign in to your dashboard
+          </p>
         </div>
 
         {/* Form */}
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
-            <label style={{
-              display: "block",
-              fontSize: "12px",
-              fontWeight: 500,
-              color: "var(--text)",
-              marginBottom: "6px",
-              fontFamily: "'DM Sans', sans-serif",
-            }}>Email</label>
+            <label
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 500,
+                color: "var(--text)",
+                marginBottom: "6px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Email
+            </label>
             <input
               type="email"
               value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="artist@artisthub.com"
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               style={{
                 width: "100%",
                 padding: "10px 14px",
@@ -95,26 +115,30 @@ export default function LoginPage() {
                 color: "var(--text)",
                 outline: "none",
               }}
-              onFocus={e => e.target.style.borderColor = "var(--accent)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"}
+              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
             />
           </div>
 
           <div>
-            <label style={{
-              display: "block",
-              fontSize: "12px",
-              fontWeight: 500,
-              color: "var(--text)",
-              marginBottom: "6px",
-              fontFamily: "'DM Sans', sans-serif",
-            }}>Password</label>
+            <label
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 500,
+                color: "var(--text)",
+                marginBottom: "6px",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Password
+            </label>
             <input
               type="password"
               value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="••••••••"
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               style={{
                 width: "100%",
                 padding: "10px 14px",
@@ -126,19 +150,23 @@ export default function LoginPage() {
                 color: "var(--text)",
                 outline: "none",
               }}
-              onFocus={e => e.target.style.borderColor = "var(--accent)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"}
+              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
             />
           </div>
 
           {error && (
-            <p style={{
-              fontSize: "13px",
-              color: "#DC2626",
-              padding: "10px 14px",
-              background: "#FEE2E2",
-              borderRadius: "2px",
-            }}>{error}</p>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "#DC2626",
+                padding: "10px 14px",
+                background: "#FEE2E2",
+                borderRadius: "2px",
+              }}
+            >
+              {error}
+            </p>
           )}
 
           <button
@@ -157,13 +185,25 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <p style={{
-          textAlign: "center",
-          fontSize: "12px",
-          color: "var(--text-muted)",
-          marginTop: "24px",
-        }}>
-         
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "13px",
+            color: "var(--text-muted)",
+            marginTop: "24px",
+          }}
+        >
+          Don't have an account?{" "}
+          <a
+            href="/register"
+            style={{
+              color: "var(--accent)",
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+          >
+            Apply for access
+          </a>
         </p>
       </div>
     </main>

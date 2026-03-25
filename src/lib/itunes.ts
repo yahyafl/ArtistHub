@@ -9,15 +9,20 @@ interface ItunesFetchOptions {
   lang?: string;
 }
 
+interface ItunesRankingOptions {
+  strictArabic?: boolean;
+  dedupeByCollection?: boolean;
+}
+
 const GENRE_ALIASES: Record<string, string[]> = {
-  arabic: ["arabic", "arab", "اغاني", "عربي"],
+  arabic: ["arabic", "arab", "arab pop", "arab hits", "arabic hits", "اغاني", "عربي", "موسيقى عربية"],
 };
 
 const MOOD_KEYWORDS: Record<string, string[]> = {
-  sad: ["sad", "melancholy", "heartbreak", "acoustic"],
-  happy: ["happy", "upbeat", "feel good", "dance"],
-  chill: ["chill", "lofi", "relax", "calm"],
-  energetic: ["energetic", "workout", "hype", "party"],
+  sad: ["sad", "melancholy", "heartbreak", "acoustic", "slow"],
+  happy: ["happy", "upbeat", "feel good", "dance", "summer"],
+  chill: ["chill", "lofi", "relax", "calm", "smooth"],
+  energetic: ["energetic", "workout", "hype", "party", "club", "dance", "power", "fast", "pump"],
   romantic: ["romantic", "love", "ballad", "slow"],
   angry: ["intense", "aggressive", "hard", "power"],
   peaceful: ["peaceful", "ambient", "soft", "instrumental"],
@@ -25,6 +30,9 @@ const MOOD_KEYWORDS: Record<string, string[]> = {
 
 const MOOD_LOCAL_KEYWORDS: Record<string, string[]> = {
   sad: ["حزين", "حزينة", "حزينه", "فراق", "دموع", "وجع"],
+  happy: ["مبهج", "فرح", "سعيد"],
+  chill: ["هادي", "هادئ", "استرخاء"],
+  romantic: ["حب", "غرام"],
 };
 
 function normalize(value: string): string {
@@ -49,25 +57,53 @@ function buildSearchTerms(genre: string, mood: string): string[] {
   const genreKeywords = collectGenreKeywords(normalizedGenre);
   const moodKeywords = collectMoodKeywords(normalizedMood);
 
+  const isHiphop = normalizedGenre === "hiphop" || normalizedGenre === "hip-hop";
+  const energeticBoost =
+    normalizedMood === "energetic"
+      ? ["workout", "party", "club", "dance", "hype", "power"]
+      : [];
+
   const localizedTerms =
     normalizedGenre === "arabic"
       ? [
-          "اغاني عربية حزينة",
-          "arabic sad songs",
-          "arabic heartbreak songs",
+          "اغاني عربية",
+          "اغاني عربية حديثة",
+          "arabic songs",
+          "arabic hits",
+          "arabic top songs",
+          "arabic pop",
         ]
       : [];
 
   const terms = [
     `${normalizedMood} ${normalizedGenre} songs`,
+    ...(isHiphop ? [
+      "hip hop workout",
+      "hip hop party",
+      "hip hop club",
+      "rap workout",
+      "rap party",
+    ] : []),
     ...genreKeywords.flatMap((genreKeyword) =>
       moodKeywords.map((moodKeyword) => `${genreKeyword} ${moodKeyword} songs`)
     ),
+    ...energeticBoost.map((boost) => `${normalizedGenre} ${boost} songs`),
     ...localizedTerms,
     `${normalizedGenre} hits`,
   ];
 
   return [...new Set(terms.filter((term) => term.trim().length > 0))];
+}
+
+function isArabicTrack(track: ItunesTrack): boolean {
+  const text = `${track.trackName} ${track.artistName} ${track.collectionName}`;
+  const genre = (track.primaryGenreName || "").toLowerCase();
+  return (
+    ARABIC_TEXT_REGEX.test(text) ||
+    genre.includes("arab") ||
+    genre.includes("middle eastern") ||
+    genre.includes("world")
+  );
 }
 
 function scoreTrack(track: ItunesTrack, genre: string, mood: string): number {
@@ -88,6 +124,18 @@ function scoreTrack(track: ItunesTrack, genre: string, mood: string): number {
   for (const keyword of moodKeywords) {
     if (haystack.includes(keyword)) {
       score += 3;
+    }
+  }
+
+  if (normalizedMood === "energetic") {
+    const energeticSignals = ["dance", "club", "remix", "workout", "hype", "power", "party", "rush", "fast", "pump"];
+    const mellowSignals = ["acoustic", "slow", "ballad", "lullaby", "piano", "chill", "relax", "smooth"];
+
+    for (const keyword of energeticSignals) {
+      if (haystack.includes(keyword)) score += 4;
+    }
+    for (const keyword of mellowSignals) {
+      if (haystack.includes(keyword)) score -= 4;
     }
   }
 
@@ -114,7 +162,8 @@ function rankAndFilterTracks(
   tracks: ItunesTrack[],
   genre: string,
   mood: string,
-  limit: number
+  limit: number,
+  options: ItunesRankingOptions = {}
 ): ItunesTrack[] {
   const normalizedGenre = normalize(genre || "indie");
   const scored = tracks
@@ -123,19 +172,34 @@ function rankAndFilterTracks(
     .filter((entry) => entry.score > 0)
     .map((entry) => entry.track);
 
-  if (normalizedGenre === "arabic") {
-    const arabicFirstPass = scored.filter((track) =>
-      ARABIC_TEXT_REGEX.test(
-        `${track.trackName} ${track.artistName} ${track.collectionName}`
-      ) || (track.primaryGenreName || "").toLowerCase().includes("arab")
-    );
+  const strictArabic = options.strictArabic ?? normalizedGenre === "arabic";
+
+  if (normalizedGenre === "arabic" && strictArabic) {
+    const arabicFirstPass = scored.filter((track) => isArabicTrack(track));
 
     if (arabicFirstPass.length > 0) {
       return arabicFirstPass.slice(0, limit);
     }
   }
 
-  return scored.slice(0, limit);
+  let results = scored.slice(0, limit);
+
+  if (options.dedupeByCollection) {
+    const seen = new Set<string>();
+    const deduped: ItunesTrack[] = [];
+
+    for (const track of results) {
+      const key = `${track.collectionName || track.trackName}-${track.artistName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(track);
+      if (deduped.length >= limit) break;
+    }
+
+    results = deduped;
+  }
+
+  return results;
 }
 
 async function fetchByTerm(
@@ -193,7 +257,8 @@ async function fetchByTerm(
 export async function fetchTopByGenre(
   genre: string = "indie",
   moodOrLimit: string | number = "chill",
-  limit: number = 10
+  limit: number = 10,
+  options: ItunesRankingOptions = {}
 ): Promise<ItunesTrack[]> {
   const mood = typeof moodOrLimit === "string" ? moodOrLimit : "chill";
   const resolvedLimit = typeof moodOrLimit === "number" ? moodOrLimit : limit;
@@ -223,12 +288,33 @@ export async function fetchTopByGenre(
     }
   }
 
-  const ranked = rankAndFilterTracks(
+  let ranked = rankAndFilterTracks(
     Array.from(uniqueTracks.values()),
     genre,
     mood,
-    resolvedLimit
+    resolvedLimit,
+    options
   );
+
+  if (normalizedGenre === "arabic" && ranked.length < resolvedLimit) {
+    const fallbackTerms = ["اغاني عربية", "arabic hits", "arabic pop", "arabic top songs"];
+    const fallbackCountries = ["AE", "SA", "EG"];
+
+    for (const country of fallbackCountries) {
+      for (const term of fallbackTerms) {
+        const tracks = await fetchByTerm(term, perRequestLimit, { country, lang: "ar_sa" });
+        tracks.forEach((track) => uniqueTracks.set(track.trackId, track));
+      }
+    }
+
+    ranked = rankAndFilterTracks(
+      Array.from(uniqueTracks.values()),
+      genre,
+      mood,
+      resolvedLimit,
+      options
+    );
+  }
 
   return ranked;
 }
